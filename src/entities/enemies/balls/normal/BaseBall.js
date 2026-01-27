@@ -92,12 +92,23 @@ this.nextBallType = nextBallType;
   }
 
   async takeDamage() {
+    // Check if this is a flash ball in Panic Mode
+    const isPanicMode = this.scene && this.scene.scene && this.scene.scene.key === 'PanicLevel';
+    const shouldFreezeTime = isPanicMode && this.isFlashBall;
+    
     // Mostrar puntaje flotante en azul
     this.showFloatingScore();
     // Dar puntos por destruir esta bola
     if (this.scene && this.scene.game && this.scene.game.events) {
       this.scene.game.events.emit(EVENTS.game.SCORE_CHANGE, this.scoreValue);
     }
+    
+    // Flash ball effect: congela el tiempo 2 segundos
+    if (shouldFreezeTime && this.scene.activateTimeStop) {
+      this.scene.activateTimeStop(2000); // 2 segundos
+      console.log('[FLASH BALL] Time frozen for 2 seconds!');
+    }
+    
     // Split si corresponde
     if (this.nextBallType) {
       await this.split();
@@ -180,6 +191,20 @@ this.nextBallType = nextBallType;
         scene.ballsGroup.add(ball1);
         scene.ballsGroup.add(ball2);
         console.log('[BALL SPLIT] Added:', ball1, ball2, 'Current group:', scene.ballsGroup.getChildren());
+        
+        // En Panic Mode, la bola de la izquierda (ball1) es "flash" - congela tiempo al destruirse
+        if (scene.scene.key === 'PanicLevel') {
+          ball1.isFlashBall = true;
+          // Efecto visual de parpadeo para la bola flash
+          scene.tweens.add({
+            targets: ball1,
+            alpha: 0.5,
+            duration: 300,
+            yoyo: true,
+            repeat: -1
+          });
+        }
+        
         if (scene.game && scene.game.events) {
           scene.game.events.emit(EVENTS.enemy.BALL_CREATED, ball1);
           scene.game.events.emit(EVENTS.enemy.BALL_CREATED, ball2);

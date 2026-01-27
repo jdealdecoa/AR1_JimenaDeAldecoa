@@ -6,8 +6,10 @@ import { WallManager } from '../objects/WallManager.js';
 import { HugeBall } from '../entities/enemies/balls/normal/HugeBall.js';
 import { BigBall } from '../entities/enemies/balls/normal/BigBall.js';
 import { MidBall } from '../entities/enemies/balls/normal/MidBall.js';
+import { SmallBall } from '../entities/enemies/balls/normal/SmallBall.js';
 import { HexBigBall } from '../entities/enemies/balls/hexagonal/HexBigBall.js';
 import { HexMidBall } from '../entities/enemies/balls/hexagonal/HexMidBall.js';
+import { HexSmallBall } from '../entities/enemies/balls/hexagonal/HexSmallBall.js';
 import { SpecialBigBall } from '../entities/enemies/balls/special/SpecialBigBall.js';
 import { SpecialMidBall } from '../entities/enemies/balls/special/SpecialMidBall.js';
 import { BALL_COLORS } from '../entities/enemies/balls/BallConstants.js';
@@ -18,11 +20,30 @@ import { Hud } from '../UI/HUD.js';
 export class PanicLevel extends Phaser.Scene {
   constructor() {
     super({ key: 'PanicLevel' });
+    
+    // Initialize time stop properties
+    this.isFrozen = false;
+    this.timeStopUntil = 0;
+    
+    // Initialize burst clear properties
+    this.burstClearActive = false;
+    this.markedForBurst = new Set();
+    
+    // Panic Mode level system
+    this.panicLevel = 1; // Nivel de dificultad actual (1-99)
+    
+    // Ball spawn configuration
+    this.ballSpawnInterval = null;
+    this.nextBallSpawnTime = 0;
   }
 
   init(data) {
     // Store the mode (normal or panic)
-    this.gameMode = data.mode || 'normal';
+    this.gameMode = data.mode || 'panic';
+    
+    // Si viene de un reinicio, mantener el nivel y las vidas
+    this.panicLevel = data.panicLevel || 1;
+    this.heroLives = data.heroLives || 3;
   }
 
   preload() {
@@ -103,6 +124,8 @@ export class PanicLevel extends Phaser.Scene {
     this.load.setPath('assets/audio');
     this.load.audio('bandaSonora', 'bandaSonora.mp3');
     this.load.audio('disparo', 'disparo.mp3');
+    this.load.audio('burbuja_pop', 'burbuja_pop.mp3');
+    this.load.audio('gameover', 'gameover.mp3');
   }
 
   create() {
@@ -136,6 +159,7 @@ export class PanicLevel extends Phaser.Scene {
     const startX = map.widthInPixels / 2;
     const startY = map.heightInPixels - 64;
     this.hero = new Hero(this, startX, startY, 'player');
+    this.hero.lives = this.heroLives; // Restaurar vidas desde el reinicio
     this.hero.body.immovable = true;
     this.hero.body.pushable = false;
     this.hero.body.moves = true;
@@ -143,16 +167,32 @@ export class PanicLevel extends Phaser.Scene {
     this.hero.body.setGravityY(600);
     this.wallManager.addHeroCollider(this.hero);
     this.wallManager.addGroupCollider(this.ballsGroup, this.bounceBall, this);
-    this.heroBallOverlap = this.physics.add.overlap(this.ballsGroup, this.hero, this.onHeroHitBall, null, this);
-    // Siempre doble arpón en PanicMode
-    if (this.hero && this.hero.setWeaponMode) {
-      this.hero.setWeaponMode('DOUBLE');
-    }
+    
+    // NO usar overlap automático - lo haremos manual en update() para tener más control
+    this.heroBallContactCooldown = {};
+    
+    // Empezar con doble arpón SIEMPRE en Panic Mode
+    this.hero.maxHarpoonsActive = 2;
+    
     // --- HUD CON BARRA DE EXP ---
     this.hud = new Hud(this, { uiTop: map.heightInPixels, mode: 'PANIC' });
+    
+    // Restaurar nivel y experiencia si viene de un reinicio
+    if (this.panicLevel > 1) {
+      this.hud.expLevel = this.panicLevel;
+      this.hud.exp = 0; // La barra empieza vacía en el nuevo nivel
+      this.hud.setExp(0);
+      console.log(`PANIC MODE - Reiniciando en Nivel ${this.panicLevel}`);
+    }
+    
+    // Actualizar las vidas en el HUD (importante si viene de un reinicio)
+    this.hud.setLives(this.heroLives);
+    
+    // Cuando el medidor llegue al 100%, subir nivel de dificultad
     this.hud.onExpLevelUp = (level) => {
+      this.panicLevel = level;
       this.advanceBackground();
-      this.spawnBall();
+      console.log(`PANIC MODE - Nivel ${this.panicLevel}`);
     };
     // --- PAUSA CON ESC ---
     this.input.keyboard.on('keydown-ESC', () => {
@@ -160,69 +200,174 @@ export class PanicLevel extends Phaser.Scene {
       this.scene.pause();
       this.scene.bringToTop('PauseMenu');
     });
-    // --- INICIAR GENERACIÓN PROGRESIVA ---
-    this.time.addEvent({ delay: 5000, loop: true, callback: () => this.progressiveBallSpawn() });
+    
+    // --- SPAWN CONTINUO DE BOLAS (basado en nivel de dificultad) ---
+    this.scheduleNextBallSpawn();
+    
     // --- SCORE GLOBAL ---
     this.globalScore = 0;
 
     // Listener para vidas del héroe
     if (this.game && this.game.events) {
-      this.game.events.on('hero:damaged', (remainingLives) => {
+      this.game.events.on(EVENTS.hero.DAMAGED, (remainingLives) => {
         if (remainingLives <= 0) {
+          // Game Over - volver al menú principal
           if (this.sound) this.sound.play('gameover', { volume: 0.12 });
           setTimeout(() => {
             this.scene.start('MainMenuScene');
           }, 2000);
+        } else {
+          // Aún quedan vidas - reiniciar nivel actual
+          console.log(`Vida perdida. Quedan ${remainingLives} vidas. Reiniciando nivel ${this.panicLevel}...`);
+          setTimeout(() => {
+            this.scene.restart({ 
+              mode: 'panic',
+              panicLevel: this.panicLevel,
+              heroLives: remainingLives
+            });
+          }, 1000);
+        }
+      });
+      
+      // Listener para cuando se destruye una bola - aumentar experiencia
+      this.game.events.on(EVENTS.enemy.BALL_DESTROYED, (data) => {
+        // Cada bola destruida suma al medidor (10 puntos base)
+        if (this.hud && this.hud.addExp) {
+          this.hud.addExp(10);
         }
       });
     }
   }
 
-  progressiveBallSpawn() {
-    if (this.ballsGroup.countActive(true) === 0) {
-      this.spawnBall();
+  /**
+   * Programa el próximo spawn de bola basado en el nivel de dificultad
+   */
+  scheduleNextBallSpawn() {
+    let spawnInterval;
+    
+    // Progresión de intervalos según el nivel
+    if (this.panicLevel <= 5) {
+      // Niveles 1-5: Arranque tranquilo, ventanas seguras grandes
+      spawnInterval = Phaser.Math.Between(3500, 4500);
+    } else if (this.panicLevel <= 10) {
+      // Niveles 6-10: Sube cadencia, más presión
+      spawnInterval = Phaser.Math.Between(2500, 3500);
+    } else if (this.panicLevel <= 15) {
+      // Niveles 11-15: Mezcla real, gestión necesaria
+      spawnInterval = Phaser.Math.Between(2000, 2800);
+    } else if (this.panicLevel <= 20) {
+      // Niveles 16-20: Pantalla cargada = estado normal
+      spawnInterval = Phaser.Math.Between(1500, 2200);
+    } else if (this.panicLevel <= 25) {
+      // Niveles 21-25: Primer gran escalón, menos margen
+      spawnInterval = Phaser.Math.Between(1200, 1800);
+    } else {
+      // Niveles 26+: Supervivencia extrema
+      const reduction = Math.min((this.panicLevel - 25) * 20, 400);
+      spawnInterval = Math.max(800, 1200 - reduction);
     }
-    // Simula experiencia progresiva
-    if (this.hud && this.hud.addExp) {
-      this.hud.addExp(10); // Sube 10 puntos cada ciclo
-    }
+    
+    this.nextBallSpawnTime = this.time.now + spawnInterval;
   }
 
+  /**
+   * Spawn de bola automático basado en nivel
+   */
   spawnBall() {
-    // Elige tipo y tamaño aleatorio (normal/hexagonal, mid o big)
-    const types = [ 'normal', 'hexagonal' ];
-    const sizes = [ 'mid', 'big' ];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const size = sizes[Math.floor(Math.random() * sizes.length)];
-    let ball;
     const x = Phaser.Math.Between(100, GAME_SIZE.WIDTH - 100);
-    // Spawn balls high on the map (low y value)
-    const y = Phaser.Math.Between(60, 120); // Always near the top
-    if (type === 'normal') {
-      if (size === 'big') ball = new BigBall(this, x, y, 1, BALL_COLORS.RED);
-      else ball = new MidBall(this, x, y, 1, BALL_COLORS.BLUE);
+    const y = Phaser.Math.Between(60, 120); // Siempre cerca del techo
+    
+    let ball;
+    
+    // Probabilidad de special ball (aumenta ligeramente con el nivel)
+    const specialBallChance = this.panicLevel <= 10 ? 0.03 : 
+                              this.panicLevel <= 20 ? 0.05 : 0.07;
+    
+    if (Math.random() < specialBallChance) {
+      // Special ball que alterna entre clock (time stop 7s) y star (limpia pantalla)
+      ball = new SpecialBigBall(this, x, y, 1);
+      console.log(`[NIVEL ${this.panicLevel}] Spawned SPECIAL BALL`);
     } else {
-      if (size === 'big') ball = new HexBigBall(this, x, y, 1, 1, BALL_COLORS.GREEN);
-      else ball = new HexMidBall(this, x, y, 1, 1, BALL_COLORS.YELLOW);
+      // Determinar si es bola rebotante (normal) o exagon según el nivel
+      let isExagon = false;
+      
+      if (this.panicLevel <= 5) {
+        // Niveles 1-5: Casi siempre bolas rebotantes, muy pocos exagons
+        isExagon = Math.random() < 0.05; // 5% exagons
+      } else if (this.panicLevel <= 10) {
+        // Niveles 6-10: Exagons empiezan a notarse
+        isExagon = Math.random() < 0.20; // 20% exagons
+      } else if (this.panicLevel <= 15) {
+        // Niveles 11-15: Mezcla real bolas + exagons
+        isExagon = Math.random() < 0.35; // 35% exagons
+      } else if (this.panicLevel <= 20) {
+        // Niveles 16-20: Exagons son amenaza constante
+        isExagon = Math.random() < 0.45; // 45% exagons
+      } else {
+        // Niveles 21+: Mezcla equilibrada
+        isExagon = Math.random() < 0.50; // 50% exagons
+      }
+      
+      // Determinar tamaño según el nivel
+      let ballSize;
+      
+      if (this.panicLevel <= 5) {
+        // Niveles 1-5: Mayormente pequeñas y medianas
+        const weights = ['small', 'small', 'mid', 'mid', 'mid'];
+        ballSize = Phaser.Math.RND.pick(weights);
+      } else if (this.panicLevel <= 10) {
+        // Niveles 6-10: Más variedad, empiezan a aparecer grandes
+        const weights = ['small', 'small', 'mid', 'mid', 'big'];
+        ballSize = Phaser.Math.RND.pick(weights);
+      } else if (this.panicLevel <= 15) {
+        // Niveles 11-15: Todas las variantes, más grandes
+        const weights = ['small', 'mid', 'mid', 'big', 'big'];
+        ballSize = Phaser.Math.RND.pick(weights);
+      } else if (this.panicLevel <= 20) {
+        // Niveles 16-20: Dominan medianas y grandes
+        const weights = ['mid', 'mid', 'big', 'big', 'huge'];
+        ballSize = Phaser.Math.RND.pick(weights);
+      } else {
+        // Niveles 21+: Cualquier tamaño, más grandes
+        const weights = ['mid', 'big', 'big', 'huge', 'huge'];
+        ballSize = Phaser.Math.RND.pick(weights);
+      }
+      
+      // Crear la bola según tipo
+      if (isExagon) {
+        // Exagons (hexagonales)
+        if (ballSize === 'big' || ballSize === 'huge') {
+          ball = new HexBigBall(this, x, y, 1, 1, BALL_COLORS.GREEN);
+        } else if (ballSize === 'mid') {
+          ball = new HexMidBall(this, x, y, 1, 1, BALL_COLORS.YELLOW);
+        } else {
+          ball = new HexSmallBall(this, x, y, 1, 1, BALL_COLORS.CYAN);
+        }
+        console.log(`[NIVEL ${this.panicLevel}] Spawned EXAGON ${ballSize}`);
+      } else {
+        // Bolas rebotantes normales
+        if (ballSize === 'huge') {
+          ball = new HugeBall(this, x, y, 1, BALL_COLORS.PURPLE);
+        } else if (ballSize === 'big') {
+          ball = new BigBall(this, x, y, 1, BALL_COLORS.RED);
+        } else if (ballSize === 'mid') {
+          ball = new MidBall(this, x, y, 1, BALL_COLORS.BLUE);
+        } else {
+          ball = new SmallBall(this, x, y, 1, BALL_COLORS.GREEN);
+        }
+        console.log(`[NIVEL ${this.panicLevel}] Spawned BALL ${ballSize}`);
+      }
     }
+    
     this.ballsGroup.add(ball);
-    // Drop aleatorio de powerup
-    if (Math.random() < 0.3) { // 30% probabilidad
-      this.time.delayedCall(500, () => {
-        if (this.dropRandomPowerUp) this.dropRandomPowerUp(ball.x, ball.y);
-      });
-    }
+    
+    // Programar el siguiente spawn
+    this.scheduleNextBallSpawn();
   }
 
   advanceBackground() {
     this.bgFrame = (this.bgFrame + 1) % (this.bgMaxFrame + 1);
     this.bg.setFrame(this.bgFrame);
-  }
-
-  dropRandomPowerUp(x, y) {
-    // Implementa aquí la lógica para crear un powerup en (x, y)
-    // Ejemplo:
-    // new PowerUpBomb(this, x, y);
   }
 
   createBall(x = null, y = null, ballType = null) {
@@ -296,6 +441,23 @@ export class PanicLevel extends Phaser.Scene {
   }
 
   update() {
+    // Spawn automático de bolas basado en tiempo
+    if (this.time.now >= this.nextBallSpawnTime) {
+      this.spawnBall();
+    }
+    
+    // Verificar colisión manual entre bolas y hero (SIN destruir la bola)
+    this.ballsGroup.children.entries.forEach(ball => {
+      if (ball && ball.active && this.hero && this.hero.active) {
+        const distance = Phaser.Math.Distance.Between(ball.x, ball.y, this.hero.x, this.hero.y);
+        const minDistance = (ball.displayWidth + this.hero.displayWidth) / 2;
+        
+        if (distance < minDistance) {
+          this.onHeroHitBall(ball, this.hero);
+        }
+      }
+    });
+    
     // Update time stop state
     this.updateTimeStop();
     
@@ -377,7 +539,13 @@ export class PanicLevel extends Phaser.Scene {
         this
       );
     }
+  }
 
+  /**
+   * Activate time stop effect
+   */
+  activateTimeStop(duration = 3000) {
+    const now = Date.now();
     const endTime = now + duration;
     
     // Don't stack - either set new time or extend to max
@@ -577,6 +745,49 @@ export class PanicLevel extends Phaser.Scene {
       ease: 'Power2',
       onComplete: () => particle.destroy()
     });
+  }
+
+  onWeaponHitBall(weapon, ball) {
+    if (weapon && weapon.active && ball && ball.active) {
+      if (weapon.destroy) weapon.destroy();
+      // Sonido de pop
+      if (this.sound) this.sound.play('burbuja_pop', { volume: 0.7 });
+      // IMPORTANTE: primero damage (emite score + floating text + split), y la bola se destruye desde dentro
+      if (ball.takeDamage) ball.takeDamage();
+    }
+  }
+
+  onFixedHarpoonHitBall(fixedHarpoon, ball) {
+    if (fixedHarpoon && fixedHarpoon.active && ball && ball.active) {
+      // Call the onBallHit method on the fixed harpoon to destroy it
+      if (fixedHarpoon.onBallHit) fixedHarpoon.onBallHit();
+      // Damage the ball
+      if (ball.takeDamage) ball.takeDamage();
+    }
+  }
+
+  onHeroHitBall(ball, hero) {
+    if (!hero || !ball || !hero.active) return;
+    if (hero.isInvulnerable || hero.isDead) return;
+    
+    // Cooldown simple: guardar timestamp en la bola misma
+    const now = Date.now();
+    
+    if (ball._lastHeroContactTime && now - ball._lastHeroContactTime < 1000) {
+      return; // Demasiado pronto, ignorar
+    }
+    ball._lastHeroContactTime = now;
+    
+    console.log(`[HERO HIT] Ball touched hero! Remaining lives: ${hero.lives}`);
+    
+    // Si el héroe tiene escudo
+    if (hero.hasShield) {
+      hero.breakShield();
+      return;
+    }
+    
+    // Si no tiene escudo, pierde vida (esto emitirá un evento que se encargará del reinicio)
+    hero.takeDamage(1);
   }
 
   shutdown() {

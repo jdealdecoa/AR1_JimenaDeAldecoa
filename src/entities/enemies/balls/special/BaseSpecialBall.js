@@ -120,6 +120,13 @@ export class BaseSpecialBall extends Phaser.Physics.Arcade.Sprite {
     if (this.scene && this.scene.sound) {
       this.scene.sound.play('burbuja_pop', { volume: 0.7 });
     }
+    
+    // Activar el efecto según la variante actual
+    if (this.currentVariant === SPECIAL_BALL_VARIANTS.CLOCK) {
+      this.triggerClockEffect();
+    } else {
+      this.triggerStarEffect();
+    }
 
     if (this.scene && this.scene.ballsGroup && this.scene.ballsGroup.contains(this)) {
       this.scene.ballsGroup.remove(this, true, true);
@@ -134,10 +141,10 @@ export class BaseSpecialBall extends Phaser.Physics.Arcade.Sprite {
   }
 
   triggerClockEffect() {
-    const duration = 3000;
+    const duration = 7000; // 7 segundos para special ball
     const bonusScore = 100;
 
-    console.log('⏰ CLOCK EFFECT: Time Stop activated!');
+    console.log('⏰ CLOCK EFFECT: Time Stop activated for 7 seconds!');
 
     if (this.scene && this.scene.game && this.scene.game.events) {
       this.scene.game.events.emit(EVENTS.game.SCORE_CHANGE, bonusScore);
