@@ -144,8 +144,16 @@ export class PanicLevel extends Phaser.Scene {
     });
     this.physics.world.bounds.width = map.widthInPixels;
     this.physics.world.bounds.height = map.heightInPixels;
+    
+    // Asegurar que los límites estén bien definidos
+    this.physics.world.bounds.x = 0;
+    this.physics.world.bounds.y = 0;
+    
+    // Guardar dimensiones del mapa para verificaciones
+    this.mapWidth = map.widthInPixels;
+    this.mapHeight = map.heightInPixels;
     // --- FONDO ---
-    this.bgFrame = 0;
+    this.bgFrame = Math.max(0, this.panicLevel - 1); // Frame basado en el nivel actual
     this.bgMaxFrame = 3; // Cambia según tu spritesheet
     this.bg = this.add.image(0, 0, 'backgrounds', this.bgFrame).setOrigin(0, 0);
     this.bg.setDisplaySize(GAME_SIZE.WIDTH, map.heightInPixels);
@@ -202,6 +210,9 @@ export class PanicLevel extends Phaser.Scene {
     });
     
     // --- SPAWN CONTINUO DE BOLAS (basado en nivel de dificultad) ---
+    // Spawnear la primera bola inmediatamente
+    this.spawnBall();
+    // Programar el siguiente spawn
     this.scheduleNextBallSpawn();
     
     // --- SCORE GLOBAL ---
@@ -231,9 +242,9 @@ export class PanicLevel extends Phaser.Scene {
       
       // Listener para cuando se destruye una bola - aumentar experiencia
       this.game.events.on(EVENTS.enemy.BALL_DESTROYED, (data) => {
-        // Cada bola destruida suma al medidor (10 puntos base)
+        // Cada bola destruida suma al medidor (25 puntos base - subió de 10)
         if (this.hud && this.hud.addExp) {
-          this.hud.addExp(10);
+          this.hud.addExp(25);
         }
       });
     }
@@ -245,26 +256,29 @@ export class PanicLevel extends Phaser.Scene {
   scheduleNextBallSpawn() {
     let spawnInterval;
     
-    // Progresión de intervalos según el nivel
-    if (this.panicLevel <= 5) {
-      // Niveles 1-5: Arranque tranquilo, ventanas seguras grandes
-      spawnInterval = Phaser.Math.Between(3500, 4500);
-    } else if (this.panicLevel <= 10) {
-      // Niveles 6-10: Sube cadencia, más presión
-      spawnInterval = Phaser.Math.Between(2500, 3500);
-    } else if (this.panicLevel <= 15) {
-      // Niveles 11-15: Mezcla real, gestión necesaria
-      spawnInterval = Phaser.Math.Between(2000, 2800);
-    } else if (this.panicLevel <= 20) {
-      // Niveles 16-20: Pantalla cargada = estado normal
-      spawnInterval = Phaser.Math.Between(1500, 2200);
-    } else if (this.panicLevel <= 25) {
-      // Niveles 21-25: Primer gran escalón, menos margen
-      spawnInterval = Phaser.Math.Between(1200, 1800);
+    // Progresión de intervalos según el nivel (muy lenta y progresiva)
+    if (this.panicLevel <= 3) {
+      // Niveles 1-3: Inicio muy tranquilo para aprender
+      spawnInterval = Phaser.Math.Between(10000, 13000);
+    } else if (this.panicLevel <= 7) {
+      // Niveles 4-7: Incremento gradual
+      spawnInterval = Phaser.Math.Between(8000, 10000);
+    } else if (this.panicLevel <= 12) {
+      // Niveles 8-12: Aumenta presión moderadamente
+      spawnInterval = Phaser.Math.Between(6500, 8000);
+    } else if (this.panicLevel <= 17) {
+      // Niveles 13-17: Ritmo medio
+      spawnInterval = Phaser.Math.Between(5000, 6500);
+    } else if (this.panicLevel <= 22) {
+      // Niveles 18-22: Ritmo medio-alto
+      spawnInterval = Phaser.Math.Between(4000, 5500);
+    } else if (this.panicLevel <= 27) {
+      // Niveles 23-27: Ritmo alto
+      spawnInterval = Phaser.Math.Between(3200, 4500);
     } else {
-      // Niveles 26+: Supervivencia extrema
-      const reduction = Math.min((this.panicLevel - 25) * 20, 400);
-      spawnInterval = Math.max(800, 1200 - reduction);
+      // Niveles 28+: Supervivencia extrema con reducción progresiva
+      const reduction = Math.min((this.panicLevel - 27) * 50, 1000);
+      spawnInterval = Math.max(1800, 3200 - reduction);
     }
     
     this.nextBallSpawnTime = this.time.now + spawnInterval;
@@ -291,11 +305,11 @@ export class PanicLevel extends Phaser.Scene {
       // Determinar si es bola rebotante (normal) o exagon según el nivel
       let isExagon = false;
       
-      if (this.panicLevel <= 5) {
-        // Niveles 1-5: Casi siempre bolas rebotantes, muy pocos exagons
-        isExagon = Math.random() < 0.05; // 5% exagons
+      if (this.panicLevel <= 7) {
+        // Niveles 1-7: Solo bolas rebotantes, NO exagons
+        isExagon = false;
       } else if (this.panicLevel <= 10) {
-        // Niveles 6-10: Exagons empiezan a notarse
+        // Niveles 8-10: Exagons empiezan a aparecer
         isExagon = Math.random() < 0.20; // 20% exagons
       } else if (this.panicLevel <= 15) {
         // Niveles 11-15: Mezcla real bolas + exagons
@@ -308,52 +322,42 @@ export class PanicLevel extends Phaser.Scene {
         isExagon = Math.random() < 0.50; // 50% exagons
       }
       
-      // Determinar tamaño según el nivel
+      // Determinar tamaño según el nivel (SOLO 2 tamaños más grandes)
       let ballSize;
       
       if (this.panicLevel <= 5) {
-        // Niveles 1-5: Mayormente pequeñas y medianas
-        const weights = ['small', 'small', 'mid', 'mid', 'mid'];
+        // Niveles 1-5: Más big que huge
+        const weights = ['big', 'big', 'big', 'huge'];
         ballSize = Phaser.Math.RND.pick(weights);
       } else if (this.panicLevel <= 10) {
-        // Niveles 6-10: Más variedad, empiezan a aparecer grandes
-        const weights = ['small', 'small', 'mid', 'mid', 'big'];
+        // Niveles 6-10: Mix equilibrado
+        const weights = ['big', 'big', 'huge', 'huge'];
         ballSize = Phaser.Math.RND.pick(weights);
       } else if (this.panicLevel <= 15) {
-        // Niveles 11-15: Todas las variantes, más grandes
-        const weights = ['small', 'mid', 'mid', 'big', 'big'];
+        // Niveles 11-15: Mix equilibrado
+        const weights = ['big', 'big', 'huge', 'huge'];
         ballSize = Phaser.Math.RND.pick(weights);
       } else if (this.panicLevel <= 20) {
-        // Niveles 16-20: Dominan medianas y grandes
-        const weights = ['mid', 'mid', 'big', 'big', 'huge'];
+        // Niveles 16-20: Más huge
+        const weights = ['big', 'huge', 'huge', 'huge'];
         ballSize = Phaser.Math.RND.pick(weights);
       } else {
-        // Niveles 21+: Cualquier tamaño, más grandes
-        const weights = ['mid', 'big', 'big', 'huge', 'huge'];
+        // Niveles 21+: Dominan huge
+        const weights = ['big', 'huge', 'huge', 'huge', 'huge'];
         ballSize = Phaser.Math.RND.pick(weights);
       }
       
       // Crear la bola según tipo
       if (isExagon) {
-        // Exagons (hexagonales)
-        if (ballSize === 'big' || ballSize === 'huge') {
-          ball = new HexBigBall(this, x, y, 1, 1, BALL_COLORS.GREEN);
-        } else if (ballSize === 'mid') {
-          ball = new HexMidBall(this, x, y, 1, 1, BALL_COLORS.YELLOW);
-        } else {
-          ball = new HexSmallBall(this, x, y, 1, 1, BALL_COLORS.CYAN);
-        }
-        console.log(`[NIVEL ${this.panicLevel}] Spawned EXAGON ${ballSize}`);
+        // Exagons (hexagonales) - Solo tamaño grande
+        ball = new HexBigBall(this, x, y, 1, 1, BALL_COLORS.GREEN);
+        console.log(`[NIVEL ${this.panicLevel}] Spawned EXAGON big`);
       } else {
-        // Bolas rebotantes normales
+        // Bolas rebotantes normales - Solo huge o big
         if (ballSize === 'huge') {
           ball = new HugeBall(this, x, y, 1, BALL_COLORS.PURPLE);
-        } else if (ballSize === 'big') {
-          ball = new BigBall(this, x, y, 1, BALL_COLORS.RED);
-        } else if (ballSize === 'mid') {
-          ball = new MidBall(this, x, y, 1, BALL_COLORS.BLUE);
         } else {
-          ball = new SmallBall(this, x, y, 1, BALL_COLORS.GREEN);
+          ball = new BigBall(this, x, y, 1, BALL_COLORS.RED);
         }
         console.log(`[NIVEL ${this.panicLevel}] Spawned BALL ${ballSize}`);
       }
@@ -445,6 +449,40 @@ export class PanicLevel extends Phaser.Scene {
     if (this.time.now >= this.nextBallSpawnTime) {
       this.spawnBall();
     }
+    
+    // Verificar que las bolas no se salgan del mapa y reposicionarlas
+    this.ballsGroup.children.entries.forEach(ball => {
+      if (ball && ball.active && ball.body) {
+        const margin = 20; // Margen de seguridad
+        let needsReposition = false;
+        
+        // Verificar límites horizontales
+        if (ball.x < margin) {
+          ball.x = margin;
+          ball.body.setVelocityX(Math.abs(ball.body.velocity.x) || 200);
+          needsReposition = true;
+        } else if (ball.x > this.mapWidth - margin) {
+          ball.x = this.mapWidth - margin;
+          ball.body.setVelocityX(-Math.abs(ball.body.velocity.x) || -200);
+          needsReposition = true;
+        }
+        
+        // Verificar límites verticales
+        if (ball.y < margin) {
+          ball.y = margin;
+          ball.body.setVelocityY(Math.abs(ball.body.velocity.y) || 200);
+          needsReposition = true;
+        } else if (ball.y > this.mapHeight - margin) {
+          ball.y = this.mapHeight - margin;
+          ball.body.setVelocityY(-Math.abs(ball.body.velocity.y) || -200);
+          needsReposition = true;
+        }
+        
+        if (needsReposition) {
+          console.warn(`Bola reposicionada: (${ball.x.toFixed(0)}, ${ball.y.toFixed(0)})`);
+        }
+      }
+    });
     
     // Verificar colisión manual entre bolas y hero (SIN destruir la bola)
     this.ballsGroup.children.entries.forEach(ball => {
@@ -587,7 +625,20 @@ export class PanicLevel extends Phaser.Scene {
         ball.body.setAllowGravity(false);
         ball.body.moves = false; // Disable all movement
         
-        ball.setTint(0x888888); // Gray tint to indicate frozen
+        // Aplicar efecto de brillo pulsante (blanco brillante)
+        ball.setTint(0xffffff);
+        
+        // Crear efecto de brillo pulsante
+        if (!ball._glowTween) {
+          ball._glowTween = this.tweens.add({
+            targets: ball,
+            alpha: { from: 1, to: 0.4 },
+            duration: 400,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+          });
+        }
       }
     });
     
@@ -613,6 +664,16 @@ export class PanicLevel extends Phaser.Scene {
       
       this.ballsGroup.children.entries.forEach(ball => {
         if (ball && ball.body && ball.active && ball._frozenVelocity) {
+          // Detener y eliminar el tween de brillo
+          if (ball._glowTween) {
+            ball._glowTween.stop();
+            ball._glowTween.remove();
+            ball._glowTween = null;
+          }
+          
+          // Restaurar alpha a 1
+          ball.setAlpha(1);
+          
           // Re-enable body movement
           ball.body.setAllowGravity(true);
           ball.body.moves = true;

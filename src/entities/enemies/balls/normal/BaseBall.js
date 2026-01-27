@@ -46,8 +46,11 @@ this.nextBallType = nextBallType;
     
     // Eliminar drag y fricción para que no pierda energía
     this.body.setDrag(0, 0);
-    this.body.setMaxVelocity(400, 400); // Limitar para evitar atravesar tiles
+    this.body.setMaxVelocity(350, 350); // Limitar para evitar atravesar tiles
     this.body.allowGravity = true;
+    
+    // Asegurar que onWorldBounds esté activo
+    this.body.onWorldBounds = true;
     
     // Habilitar collision faces en todos los lados
     this.body.checkCollision.up = true;
@@ -192,8 +195,8 @@ this.nextBallType = nextBallType;
         scene.ballsGroup.add(ball2);
         console.log('[BALL SPLIT] Added:', ball1, ball2, 'Current group:', scene.ballsGroup.getChildren());
         
-        // En Panic Mode, la bola de la izquierda (ball1) es "flash" - congela tiempo al destruirse
-        if (scene.scene.key === 'PanicLevel') {
+        // En Panic Mode, solo algunas bolas son "flash" (25% de probabilidad)
+        if (scene.scene.key === 'PanicLevel' && Math.random() < 0.25) {
           ball1.isFlashBall = true;
           // Efecto visual de parpadeo para la bola flash
           scene.tweens.add({
