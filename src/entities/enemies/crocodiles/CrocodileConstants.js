@@ -1,0 +1,38 @@
+
+export const CROCODILE_SCORE = 200;
+
+
+export const CROCODILE_SPEED = 80; 
+
+
+export const CROCODILE_TIMERS = {
+  MIN_PATROL_TIME: 10000,    
+  LADDER_CHECK_COOLDOWN: 1000, 
+  STUN_DURATION: 999999      
+};
+
+
+export const CROCODILE_PHYSICS = {
+  DESCEND_SPEED: 100,        
+  LAUNCH_VELOCITY_X: 300,    
+  LAUNCH_VELOCITY_Y: -200,   
+  EDGE_CHECK_DISTANCE: 16   
+};
+
+
+export const CROCODILE_COLORS = {
+  GREEN: 0x00ff00,
+  DARK_GREEN: 0x008800,
+  BLUE_GREEN: 0x00cc88,
+  YELLOW_GREEN: 0x88cc00,
+  BROWN: 0x8B4513
+};
+
+
+export const CROCODILE_SPAWN_LEVELS = {
+  TOP: 100,
+  MID_HIGH: 250,
+  MID: 400,
+  MID_LOW: 550,
+  BOTTOM: 700
+};
