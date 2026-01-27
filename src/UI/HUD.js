@@ -40,10 +40,12 @@ export class Hud {
 
     // Texto "1-P" encima de las vidas
     this.playerLabel = scene.add
-      .text(baseX, iconY - 70, '1-P', {
-        fontFamily: 'Arial',
-        fontSize: '28px',
+      .text(baseX, iconY - 65, '1-P', {
+        fontFamily: 'Arial Black',
+        fontSize: '24px',
         color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 3
       })
       .setOrigin(0, 1); // anclado por abajo, justo encima de los iconos
 
@@ -67,16 +69,18 @@ export class Hud {
     this.score = 0;
     this.scoreText = scene.add
       .text(
-        GAME_SIZE.WIDTH - 24,
-        this.uiTop + this.uiHeight / 2,
-        'SCORE: 00',
+        200,
+        this.uiTop + this.uiHeight - 35,
+        '00',
         {
-          fontFamily: 'Arial',
-          fontSize: '24px',
+          fontFamily: 'Arial Black',
+          fontSize: '32px',
           color: '#ffffff',
+          stroke: '#000000',
+          strokeThickness: 4
         }
       )
-      .setOrigin(1, 0.5);
+      .setOrigin(0, 1);
 
     // ==========================
     //   WORLD + MODE LABELS
@@ -100,17 +104,17 @@ export class Hud {
     const isTourLevel = this._isTourLevel(scene?.scene?.key);
     const modeLabelText = isTourLevel ? 'TOUR MODE' : (mode === 'PANIC' ? 'PANIC MODE' : '');
     this.modeLabel = scene.add.text(
-      GAME_SIZE.WIDTH - 180,
-      this.uiTop + this.uiHeight - 20,
+      GAME_SIZE.WIDTH - 30,
+      this.uiTop + this.uiHeight - 35,
       modeLabelText,
       {
-        fontFamily: 'Arial',
-        fontSize: '28px',
+        fontFamily: 'Arial Black',
+        fontSize: '32px',
         color: '#00ff66',
         stroke: '#000000',
         strokeThickness: 4,
       }
-    ).setOrigin(0, 1);
+    ).setOrigin(1, 1);
 
     // ==========================
     //   POWER-UP SLOT (CENTER)
@@ -151,14 +155,75 @@ export class Hud {
     //   BARRA DE EXPERIENCIA (solo PanicMode)
     // ==========================
     if (mode === 'PANIC') {
-      this.expBarBg = scene.add.rectangle(GAME_SIZE.WIDTH / 2, this.uiTop + 10, 200, 20, 0x333333, 1).setOrigin(0.5, 0);
-      this.expBar = scene.add.rectangle(GAME_SIZE.WIDTH / 2 - 100, this.uiTop + 10, 0, 20, 0x00ff00, 1).setOrigin(0, 0);
-      this.expBarLevelText = scene.add.text(GAME_SIZE.WIDTH / 2, this.uiTop + 35, 'Nivel 1', {
-        fontFamily: 'Arial', fontSize: '18px', color: '#ffffff'
+      const centerX = GAME_SIZE.WIDTH / 2;
+      const topY = this.uiTop + this.uiHeight - 70; // Posicionar en la zona visible de UI
+      
+      // Texto "LEVEL" grande estilo arcade (izquierda)
+      this.levelLabelText = scene.add.text(centerX - 80, topY, 'LEVEL', {
+        fontFamily: 'Arial Black',
+        fontSize: '34px',
+        color: '#ffcc00',
+        stroke: '#000000',
+        strokeThickness: 5,
+        shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
       }).setOrigin(0.5, 0);
+      
+      // Número de nivel grande y destacado (derecha, alineado con LEVEL)
+      this.expBarLevelText = scene.add.text(centerX + 60, topY - 2, '1', {
+        fontFamily: 'Arial Black',
+        fontSize: '38px',
+        color: '#ff8800',
+        stroke: '#000000',
+        strokeThickness: 5,
+        shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
+      }).setOrigin(0.5, 0);
+      
+      // Barra de experiencia más grande y estilizada
+      const barWidth = 220;
+      const barHeight = 18;
+      const barY = topY + 48;
+      
+      // Borde externo de la barra
+      this.expBarOuterBorder = scene.add.rectangle(centerX, barY, barWidth + 6, barHeight + 6, 0xffffff, 1).setOrigin(0.5, 0);
+      
+      // Fondo de la barra (oscuro)
+      this.expBarBg = scene.add.rectangle(centerX, barY + 3, barWidth, barHeight, 0x000000, 1).setOrigin(0.5, 0);
+      
+      // Crear barra arcoiris con múltiples segmentos
+      this.rainbowSegments = [];
+      const colors = [0xff0000, 0xff7700, 0xffff00, 0x00ff00, 0x0088ff, 0x0000ff, 0x8800ff];
+      const segmentWidth = barWidth / colors.length;
+      
+      for (let i = 0; i < colors.length; i++) {
+        const segment = scene.add.rectangle(
+          centerX - barWidth/2 + (i * segmentWidth), 
+          barY + 3, 
+          segmentWidth, 
+          barHeight, 
+          colors[i], 
+          1
+        ).setOrigin(0, 0);
+        this.rainbowSegments.push(segment);
+      }
+      
+      // Máscara para mostrar solo el progreso
+      this.expBarMask = scene.add.rectangle(centerX - barWidth/2, barY + 3, 0, barHeight, 0xffffff, 1).setOrigin(0, 0);
+      
+      // Aplicar máscara a todos los segmentos
+      const maskShape = scene.make.graphics();
+      maskShape.fillStyle(0xffffff);
+      maskShape.fillRect(centerX - barWidth/2, barY + 3, 0, barHeight);
+      
+      this.rainbowSegments.forEach(segment => {
+        segment.setVisible(false); // Ocultos inicialmente
+      });
+      
       this.exp = 0;
       this.expMax = 500;
       this.expLevel = 1;
+      this.expBarMaxWidth = barWidth;
+      this.expBarStartX = centerX - barWidth/2;
+      this.expBarY = barY;
     }
 
     // ==========================
@@ -178,8 +243,13 @@ export class Hud {
   // ===== SCORE =====
   onScoreChange(delta) {
     this.score += delta;
-    const padded = this.score.toString().padStart(2, '0');
-    this.scoreText.setText(`SCORE: ${padded}`);
+    const padded = this.score.toString().padStart(6, '0');
+    this.scoreText.setText(`${padded}`);
+  }
+
+  resetScore() {
+    this.score = 0;
+    this.scoreText.setText('000000');
   }
 
   // ===== VIDAS =====
@@ -290,31 +360,50 @@ export class Hud {
 
   // ===== EXPERIENCIA (solo PanicMode) =====
   setExp(value) {
-    if (!this.expBar) return;
+    if (!this.rainbowSegments) return;
     this.exp = Math.max(0, Math.min(this.expMax, value));
-    this.expBar.width = (this.exp / this.expMax) * 200;
-    this.expBar.x = GAME_SIZE.WIDTH / 2 - 100;
-    this.expBarBg.width = 200;
-    this.expBarBg.x = GAME_SIZE.WIDTH / 2;
-    this.expBarLevelText.setText(`Nivel ${this.expLevel}`);
+    const barWidth = this.expBarMaxWidth || 220;
+    const progressWidth = (this.exp / this.expMax) * barWidth;
+    
+    // Mostrar/ocultar segmentos según el progreso
+    const segmentWidth = barWidth / this.rainbowSegments.length;
+    this.rainbowSegments.forEach((segment, i) => {
+      const segmentStart = i * segmentWidth;
+      const segmentEnd = (i + 1) * segmentWidth;
+      
+      if (progressWidth > segmentStart) {
+        segment.setVisible(true);
+        if (progressWidth < segmentEnd) {
+          // Segmento parcialmente visible
+          segment.width = progressWidth - segmentStart;
+        } else {
+          // Segmento completamente visible
+          segment.width = segmentWidth;
+        }
+      } else {
+        segment.setVisible(false);
+      }
+    });
+    
+    this.expBarLevelText.setText(`${this.expLevel}`);
   }
   addExp(delta) {
-    if (!this.expBar) return;
+    if (!this.rainbowSegments) return;
     this.setExp(this.exp + delta);
     if (this.exp >= this.expMax) {
       this.expLevel++;
       this.exp = 0;
       this.setExp(this.exp);
-      this.expBarLevelText.setText(`Nivel ${this.expLevel}`);
+      this.expBarLevelText.setText(`${this.expLevel}`);
       if (this.onExpLevelUp) this.onExpLevelUp(this.expLevel);
     }
   }
   resetExp() {
-    if (!this.expBar) return;
+    if (!this.rainbowSegments) return;
     this.exp = 0;
     this.expLevel = 1;
     this.setExp(this.exp);
-    this.expBarLevelText.setText(`Nivel ${this.expLevel}`);
+    this.expBarLevelText.setText(`${this.expLevel}`);
   }
 
   // ===== LIMPIEZA =====

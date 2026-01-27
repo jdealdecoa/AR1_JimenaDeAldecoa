@@ -44,6 +44,7 @@ export class PanicLevel extends Phaser.Scene {
     // Si viene de un reinicio, mantener el nivel y las vidas
     this.panicLevel = data.panicLevel || 1;
     this.heroLives = data.heroLives || 3;
+    this.savedScore = data.score || 0; // Guardar score para restaurar
   }
 
   preload() {
@@ -185,6 +186,13 @@ export class PanicLevel extends Phaser.Scene {
     // --- HUD CON BARRA DE EXP ---
     this.hud = new Hud(this, { uiTop: map.heightInPixels, mode: 'PANIC' });
     
+    // Restaurar score si viene de un reinicio
+    if (this.savedScore > 0) {
+      this.hud.score = this.savedScore;
+      const padded = this.savedScore.toString().padStart(6, '0');
+      this.hud.scoreText.setText(`${padded}`);
+    }
+    
     // Restaurar nivel y experiencia si viene de un reinicio
     if (this.panicLevel > 1) {
       this.hud.expLevel = this.panicLevel;
@@ -228,13 +236,16 @@ export class PanicLevel extends Phaser.Scene {
             this.scene.start('MainMenuScene');
           }, 2000);
         } else {
-          // Aún quedan vidas - reiniciar nivel actual
+          // Aún quedan vidas - reiniciar nivel actual manteniendo score
           console.log(`Vida perdida. Quedan ${remainingLives} vidas. Reiniciando nivel ${this.panicLevel}...`);
+          // Guardar el score actual antes de reiniciar
+          const currentScore = this.hud ? this.hud.score : 0;
           setTimeout(() => {
             this.scene.restart({ 
               mode: 'panic',
               panicLevel: this.panicLevel,
-              heroLives: remainingLives
+              heroLives: remainingLives,
+              score: currentScore
             });
           }, 1000);
         }
@@ -305,44 +316,40 @@ export class PanicLevel extends Phaser.Scene {
       // Determinar si es bola rebotante (normal) o exagon según el nivel
       let isExagon = false;
       
-      if (this.panicLevel <= 7) {
-        // Niveles 1-7: Solo bolas rebotantes, NO exagons
+      if (this.panicLevel <= 14) {
+        // Niveles 1-14: Solo bolas rebotantes, NO exagons
         isExagon = false;
-      } else if (this.panicLevel <= 10) {
-        // Niveles 8-10: Exagons empiezan a aparecer
-        isExagon = Math.random() < 0.20; // 20% exagons
-      } else if (this.panicLevel <= 15) {
-        // Niveles 11-15: Mezcla real bolas + exagons
-        isExagon = Math.random() < 0.35; // 35% exagons
       } else if (this.panicLevel <= 20) {
-        // Niveles 16-20: Exagons son amenaza constante
-        isExagon = Math.random() < 0.45; // 45% exagons
+        // Niveles 15-20: Exagons empiezan a aparecer
+        isExagon = Math.random() < 0.25; // 25% exagons
+      } else if (this.panicLevel <= 25) {
+        // Niveles 21-25: Más exagons
+        isExagon = Math.random() < 0.40; // 40% exagons
       } else {
-        // Niveles 21+: Mezcla equilibrada
+        // Niveles 26+: Mezcla equilibrada
         isExagon = Math.random() < 0.50; // 50% exagons
       }
       
       // Determinar tamaño según el nivel (SOLO 2 tamaños más grandes)
       let ballSize;
       
-      if (this.panicLevel <= 5) {
-        // Niveles 1-5: Más big que huge
+      if (this.panicLevel <= 7) {
+        // Niveles 1-7: SOLO big, NO huge todavía
+        ballSize = 'big';
+      } else if (this.panicLevel <= 12) {
+        // Niveles 8-12: Huge empieza a aparecer
         const weights = ['big', 'big', 'big', 'huge'];
         ballSize = Phaser.Math.RND.pick(weights);
-      } else if (this.panicLevel <= 10) {
-        // Niveles 6-10: Mix equilibrado
+      } else if (this.panicLevel <= 17) {
+        // Niveles 13-17: Mix equilibrado
         const weights = ['big', 'big', 'huge', 'huge'];
         ballSize = Phaser.Math.RND.pick(weights);
-      } else if (this.panicLevel <= 15) {
-        // Niveles 11-15: Mix equilibrado
-        const weights = ['big', 'big', 'huge', 'huge'];
-        ballSize = Phaser.Math.RND.pick(weights);
-      } else if (this.panicLevel <= 20) {
-        // Niveles 16-20: Más huge
+      } else if (this.panicLevel <= 22) {
+        // Niveles 18-22: Más huge
         const weights = ['big', 'huge', 'huge', 'huge'];
         ballSize = Phaser.Math.RND.pick(weights);
       } else {
-        // Niveles 21+: Dominan huge
+        // Niveles 23+: Dominan huge
         const weights = ['big', 'huge', 'huge', 'huge', 'huge'];
         ballSize = Phaser.Math.RND.pick(weights);
       }
