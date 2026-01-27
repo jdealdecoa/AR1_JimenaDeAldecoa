@@ -7,6 +7,7 @@ import { HugeBall } from '../entities/enemies/balls/normal/HugeBall.js';
 import { BigBall } from '../entities/enemies/balls/normal/BigBall.js';
 import { MidBall } from '../entities/enemies/balls/normal/MidBall.js';
 import { SmallBall } from '../entities/enemies/balls/normal/SmallBall.js';
+import { StarClearBall } from '../entities/enemies/balls/normal/StarClearBall.js';
 import { HexBigBall } from '../entities/enemies/balls/hexagonal/HexBigBall.js';
 import { HexMidBall } from '../entities/enemies/balls/hexagonal/HexMidBall.js';
 import { HexSmallBall } from '../entities/enemies/balls/hexagonal/HexSmallBall.js';
@@ -304,31 +305,39 @@ export class PanicLevel extends Phaser.Scene {
     
     let ball;
     
-    // Probabilidad de special ball (aumenta ligeramente con el nivel)
-    const specialBallChance = this.panicLevel <= 10 ? 0.03 : 
-                              this.panicLevel <= 20 ? 0.05 : 0.07;
+    // Probabilidad de bola limpiadora de estrella (10%)
+    const starClearChance = 0.10;
     
-    if (Math.random() < specialBallChance) {
-      // Special ball que alterna entre clock (time stop 7s) y star (limpia pantalla)
-      ball = new SpecialBigBall(this, x, y, 1);
-      console.log(`[NIVEL ${this.panicLevel}] Spawned SPECIAL BALL`);
+    if (Math.random() < starClearChance) {
+      // Bola limpiadora especial
+      ball = new StarClearBall(this, x, y, 1, BALL_COLORS.ORANGE);
+      console.log(`[NIVEL ${this.panicLevel}] Spawned STAR CLEAR BALL`);
     } else {
-      // Determinar si es bola rebotante (normal) o exagon según el nivel
-      let isExagon = false;
+      // Probabilidad de special ball (aumenta ligeramente con el nivel)
+      const specialBallChance = this.panicLevel <= 10 ? 0.03 : 
+                                this.panicLevel <= 20 ? 0.05 : 0.07;
       
-      if (this.panicLevel <= 14) {
-        // Niveles 1-14: Solo bolas rebotantes, NO exagons
-        isExagon = false;
-      } else if (this.panicLevel <= 20) {
-        // Niveles 15-20: Exagons empiezan a aparecer
-        isExagon = Math.random() < 0.25; // 25% exagons
-      } else if (this.panicLevel <= 25) {
-        // Niveles 21-25: Más exagons
-        isExagon = Math.random() < 0.40; // 40% exagons
+      if (Math.random() < specialBallChance) {
+        // Special ball que alterna entre clock (time stop 7s) y star (limpia pantalla)
+        ball = new SpecialBigBall(this, x, y, 1);
+        console.log(`[NIVEL ${this.panicLevel}] Spawned SPECIAL BALL`);
       } else {
-        // Niveles 26+: Mezcla equilibrada
-        isExagon = Math.random() < 0.50; // 50% exagons
-      }
+        // Determinar si es bola rebotante (normal) o exagon según el nivel
+        let isExagon = false;
+        
+        if (this.panicLevel <= 14) {
+          // Niveles 1-14: Solo bolas rebotantes, NO exagons
+          isExagon = false;
+        } else if (this.panicLevel <= 20) {
+          // Niveles 15-20: Exagons empiezan a aparecer
+          isExagon = Math.random() < 0.25; // 25% exagons
+        } else if (this.panicLevel <= 25) {
+          // Niveles 21-25: Más exagons
+          isExagon = Math.random() < 0.40; // 40% exagons
+        } else {
+          // Niveles 26+: Mezcla equilibrada
+          isExagon = Math.random() < 0.50; // 50% exagons
+        }
       
       // Determinar tamaño según el nivel (SOLO 2 tamaños más grandes)
       let ballSize;
@@ -367,6 +376,7 @@ export class PanicLevel extends Phaser.Scene {
           ball = new BigBall(this, x, y, 1, BALL_COLORS.RED);
         }
         console.log(`[NIVEL ${this.panicLevel}] Spawned BALL ${ballSize}`);
+        }
       }
     }
     
@@ -650,6 +660,66 @@ export class PanicLevel extends Phaser.Scene {
     });
     
     console.log(`Time Stop activated for ${duration}ms`);
+  }
+
+  /**
+   * Activar efecto de limpieza de estrella - destruye todas las bolas una por una
+   */
+  async activateStarClear(starBall) {
+    console.log('⭐ STAR CLEAR: Limpiando pantalla...');
+    
+    // Pausar spawning temporalmente
+    const originalNextSpawnTime = this.nextBallSpawnTime;
+    this.nextBallSpawnTime = Infinity;
+    
+    // Obtener todas las bolas activas (excepto la bola estrella que se está destruyendo)
+    const ballsToDestroy = this.ballsGroup.children.entries.filter(b => 
+      b && b.active && b !== starBall && !b.isStarClear
+    );
+    
+    // Congelar todas las bolas para evitar que se muevan
+    ballsToDestroy.forEach(ball => {
+      if (ball && ball.body) {
+        ball.body.setVelocity(0, 0);
+        ball.body.setAllowGravity(false);
+        ball.body.moves = false;
+      }
+    });
+    
+    // Destruir una por una con delay para que se aprecie y suene
+    for (let i = 0; i < ballsToDestroy.length; i++) {
+      const ball = ballsToDestroy[i];
+      if (ball && ball.active) {
+        // Reproducir sonido
+        if (this.sound) {
+          this.sound.play('burbuja_pop', { volume: 0.6 });
+        }
+        
+        // Destruir la bola
+        if (this.ballsGroup.contains(ball)) {
+          this.ballsGroup.remove(ball, true, true);
+        }
+        ball.destroy();
+        
+        // Pequeño delay entre destrucciones (100ms)
+        await new Promise(resolve => this.time.delayedCall(100, resolve));
+      }
+    }
+
+    // Destruir la bola estrella también
+    if (starBall && starBall.active && this.ballsGroup.contains(starBall)) {
+      this.ballsGroup.remove(starBall, true, true);
+      starBall.destroy();
+    }
+    
+    console.log('⭐ STAR CLEAR: Pantalla limpia, mapa vacío 2 segundos...');
+    
+    // Mantener pantalla limpia 2 segundos
+    await new Promise(resolve => this.time.delayedCall(2000, resolve));
+    
+    // Reanudar spawning
+    this.scheduleNextBallSpawn();
+    console.log('⭐ STAR CLEAR: Reanudando spawning normal');
   }
 
   /**

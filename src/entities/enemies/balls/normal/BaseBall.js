@@ -2,7 +2,7 @@ import { EVENTS } from '../../../../core/events.js';
 import { BALL_COLORS, BALL_SCORES } from '../BallConstants.js';
 
 export class BaseBall extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y, texture, speedX, nextBallType = null, color = BALL_COLORS.WHITE, scoreValue = 10, minBounceSpeed = 150) {
+  constructor(scene, x, y, texture, speedX, nextBallType = null, color = BALL_COLORS.WHITE, scoreValue = 10, minBounceSpeed = 200) {
     super(scene, x, y, texture);
     
     scene.add.existing(this);
@@ -46,11 +46,15 @@ this.nextBallType = nextBallType;
     
     // Eliminar drag y fricción para que no pierda energía
     this.body.setDrag(0, 0);
-    this.body.setMaxVelocity(350, 350); // Limitar para evitar atravesar tiles
+    this.body.setMaxVelocity(300, 450); // Reducir horizontal, mantener vertical controlado
     this.body.allowGravity = true;
     
     // Asegurar que onWorldBounds esté activo
     this.body.onWorldBounds = true;
+    
+    // Configurar para evitar atravesar tiles
+    this.body.setSize(this.width * 0.9, this.height * 0.9); // Collider ligeramente más pequeño
+    this.body.setMaxSpeed(450); // Velocidad total máxima
     
     // Habilitar collision faces en todos los lados
     this.body.checkCollision.up = true;
