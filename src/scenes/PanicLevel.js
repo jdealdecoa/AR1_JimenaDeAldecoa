@@ -309,6 +309,7 @@ export class PanicLevel extends Phaser.Scene {
     const y = Phaser.Math.Between(60, 120); // Siempre cerca del techo
     
     let ball;
+    const floatDuration = 2000; // 2 segundos flotando
     
     // Probabilidad de bola limpiadora de estrella (10%)
     const starClearChance = 0.10;
@@ -386,6 +387,25 @@ export class PanicLevel extends Phaser.Scene {
     }
     
     this.ballsGroup.add(ball);
+    
+    // Suspender la bola en el aire durante 2 segundos antes de caer
+    if (ball && ball.body) {
+      // Desactivar gravedad temporalmente y detener movimiento
+      ball.body.setAllowGravity(false);
+      ball.body.setVelocity(0, 0);
+      
+      // Guardar la velocidad X inicial que debería tener
+      const initialSpeedX = ball.speedX || Phaser.Math.Between(-150, 150);
+      
+      // Después de 2 segundos, activar física normal
+      this.time.delayedCall(floatDuration, () => {
+        if (ball && ball.active && ball.body) {
+          ball.body.setAllowGravity(true);
+          // Dar velocidad X aleatoria para movimiento horizontal natural
+          ball.body.setVelocityX(initialSpeedX);
+        }
+      });
+    }
     
     // Programar el siguiente spawn
     this.scheduleNextBallSpawn();

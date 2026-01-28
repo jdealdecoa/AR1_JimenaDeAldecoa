@@ -393,6 +393,9 @@ export class Hud {
     if (this.exp >= this.expMax) {
       this.expLevel++;
       this.exp = 0;
+      // Aumentar el expMax progresivamente con cada nivel
+      // Formula: 500 bolas base por nivel (20 bolas * 25 puntos)
+      this.expMax = 500 * this.expLevel;
       this.setExp(this.exp);
       this.expBarLevelText.setText(`${this.expLevel}`);
       if (this.onExpLevelUp) this.onExpLevelUp(this.expLevel);

@@ -65,7 +65,10 @@ export class Harpoon extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Velocidad constante hacia arriba (recto, sin parábola)
-    this.body.setVelocityY(-WEAPON.HARPOON_SPEED);
+    // Compensate velocity during slow motion only
+    const slowMotionActive = scene.physics.world.timeScale > 1;
+    const speed = slowMotionActive ? WEAPON.HARPOON_SPEED * 2 : WEAPON.HARPOON_SPEED;
+    this.body.setVelocityY(-speed);
   }
 
   preUpdate(time, delta) {

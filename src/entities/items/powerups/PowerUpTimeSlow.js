@@ -54,8 +54,15 @@ export class PowerUpTimeSlow extends BaseItem {
       onComplete: () => slowText.destroy()
     });
     
-    // Apply slow motion effect using timeScale
-    scene.physics.world.timeScale = ITEMS.MULTIPLIER.SLOW_MOTION;
+    // Apply global slow motion using physics timeScale
+    // timeScale > 1 = slower, < 1 = faster (inverse of normal)
+    const slowFactor = 1 / ITEMS.MULTIPLIER.SLOW_MOTION; // 1/0.5 = 2.0 = double slow
+    console.log('[SLOW MOTION] Applying timeScale:', slowFactor);
+    scene.physics.world.timeScale = slowFactor;
+    
+    // Hero already compensated to move normally
+    hero._slowMotionCompensation = 1;
+    console.log('[SLOW MOTION] Hero compensation:', 1);
     
     // Optional: Screen tint effect
     const tintOverlay = scene.add.rectangle(
@@ -70,8 +77,10 @@ export class PowerUpTimeSlow extends BaseItem {
     tintOverlay.setScrollFactor(0);
     
     scene.time.delayedCall(ITEMS.DURATION.TIME_SLOW, () => {
-      // Restore normal speed
+      // Restore normal physics speed
+      console.log('[SLOW MOTION] Restoring normal speed');
       scene.physics.world.timeScale = 1.0;
+      hero._slowMotionCompensation = 1;
       
       scene.tweens.add({
         targets: tintOverlay,

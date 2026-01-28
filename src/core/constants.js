@@ -86,7 +86,7 @@ export const ITEMS = {
     
     
     MULTIPLIER: {
-        SLOW_MOTION: 0.4 
+        SLOW_MOTION: 0.5 
     }
 };
 

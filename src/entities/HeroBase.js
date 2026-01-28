@@ -25,6 +25,10 @@ export class HeroBase extends Phaser.Physics.Arcade.Sprite
         this.isDead = false;
 
         this.isShooting = false;
+        
+        // Slow motion compensation
+        this._slowMotionActive = false;
+        this._slowMotionCompensation = 1;
 
         this.cursors  = scene.input.keyboard.createCursorKeys();
         this.shootKey = scene.input.keyboard.addKey(
@@ -50,13 +54,17 @@ export class HeroBase extends Phaser.Physics.Arcade.Sprite
         body.setVelocityX(0);
         let isMoving = false;
 
+        // Compensate hero speed during slow motion only
+        const slowMotionActive = this.scene && this.scene.physics.world.timeScale > 1;
+        const effectiveSpeed = slowMotionActive ? this.speed * 2 : this.speed;
+
         if (this.cursors.left.isDown) {
-            body.setVelocityX(-this.speed);
+            body.setVelocityX(-effectiveSpeed);
             isMoving = true;
             this.setFlipX(false);
         } 
         else if (this.cursors.right.isDown) {
-            body.setVelocityX(this.speed);
+            body.setVelocityX(effectiveSpeed);
             isMoving = true;
             this.setFlipX(true);
         }

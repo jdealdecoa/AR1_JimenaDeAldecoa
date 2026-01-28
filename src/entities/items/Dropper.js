@@ -13,20 +13,20 @@ import { PowerUpTimeSlow } from './powerups/PowerUpTimeSlow.js';
 
 // Tabla de botín por defecto
 export const DEFAULT_LOOT_TABLE = [
-  { type: 'FRUITS', weight: 40, variant: 'SMALL' },
-  { type: 'FRUITS', weight: 25, variant: 'MEDIUM' },
-  { type: 'FRUITS', weight: 15, variant: 'LARGE' },
+  { type: 'FRUITS', weight: 20, variant: 'SMALL' },
+  { type: 'FRUITS', weight: 15, variant: 'MEDIUM' },
+  { type: 'FRUITS', weight: 10, variant: 'LARGE' },
   { type: 'FRUITS', weight: 5,  variant: 'SPECIAL' },
 
-  { type: 'WEAPON_TEMP_DOUBLE',  weight: 7 },
-  { type: 'WEAPON_TEMP_MACHINE', weight: 6 },
-  { type: 'WEAPON_TEMP_FIXED',   weight: 5 },
+  { type: 'WEAPON_TEMP_DOUBLE',  weight: 10 },
+  { type: 'WEAPON_TEMP_MACHINE', weight: 10 },
+  { type: 'WEAPON_TEMP_FIXED',   weight: 10 },
 
-  { type: 'POWER_UP_SHIELD', weight: 6 },
-  { type: 'POWER_UP_BOMB',   weight: 4 },
-  { type: 'TIME_FREEZE',     weight: 3 },
-  { type: 'TIME_SLOW',       weight: 3 },
-  { type: 'POWER_UP_LIFE',   weight: 1 },
+  { type: 'POWER_UP_SHIELD', weight: 8 },
+  { type: 'POWER_UP_BOMB',   weight: 6 },
+  { type: 'TIME_FREEZE',     weight: 4 },
+  { type: 'TIME_SLOW',       weight: 4 },
+  { type: 'POWER_UP_LIFE',   weight: 3 },
 ];
 
 export const DROPPER_CONFIG = {

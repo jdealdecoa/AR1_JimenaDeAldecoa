@@ -36,7 +36,9 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
 
  
     fire(angleDeg) {
-        const speed = 600;
+        // Compensate velocity during slow motion only
+        const slowMotionActive = this.scene.physics.world.timeScale > 1;
+        const speed = slowMotionActive ? 600 * 2 : 600;
         const rad = Phaser.Math.DegToRad(angleDeg);
 
         const vx = Math.cos(rad) * speed;
