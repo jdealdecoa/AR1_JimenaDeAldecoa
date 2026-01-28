@@ -11,7 +11,7 @@ export class SelectModeScene extends Phaser.Scene {
       "assets/sprites/ui/SelectModeSceneSprite.png"
     );
     this.load.setPath('assets/audio');
-    this.load.audio('inicio', 'inicio.mp3');
+    this.load.audio('modeSelect', 'ModeSelect.mp3');
   }
 
   create() {
@@ -33,7 +33,7 @@ export class SelectModeScene extends Phaser.Scene {
 
     if (this.game.audioManager) {
       this.game.audioManager.stopMusic();
-      this.game.audioManager.playMusic(this, 'inicio', { loop: true, volume: 0.5 });
+      this.game.audioManager.playMusic(this, 'modeSelect', { loop: true, volume: 0.5 });
     }
 
     // ===== ZONAS CLICABLES encima de los recuadros =====

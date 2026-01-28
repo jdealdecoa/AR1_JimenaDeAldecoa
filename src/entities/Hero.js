@@ -181,20 +181,8 @@ export class Hero extends HeroBase {
 
     shootHarpoon() {
         const texture = this.maxHarpoonsActive > 1 ? 'arpon' : 'arponFijo';
-
-        if (this.maxHarpoonsActive === 2) {
-            // Fire both harpoons simultaneously in double mode
-            const offsetX = 15;
-            const harpoon1 = new Harpoon(this.scene, this.x - offsetX, this.y, texture);
-            const harpoon2 = new Harpoon(this.scene, this.x + offsetX, this.y, texture);
-            this.activeHarpoons.push(harpoon1);
-            this.activeHarpoons.push(harpoon2);
-        } else {
-            // Fire single harpoon in normal mode
-            const harpoon = new Harpoon(this.scene, this.x, this.y, texture);
-            this.activeHarpoons.push(harpoon);
-        }
-
+        const harpoon = new Harpoon(this.scene, this.x, this.y, texture);
+        this.activeHarpoons.push(harpoon);
         this.scene.game.events.emit(EVENTS.hero.SHOOT);
     }
 

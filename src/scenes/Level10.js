@@ -50,7 +50,7 @@ export class Level10 extends Phaser.Scene {
     this.load.audio('burbuja_pop', 'burbuja_pop.mp3');
     this.load.audio('rectangulo_pop', 'rectangulo_pop.mp3');
     this.load.audio('disparo', 'disparo.mp3');
-    this.load.audio('bandaSonora', 'bandaSonora.mp3');
+    this.load.audio('inicio', 'inicio.mp3');
     this.load.audio('victoria', 'victoria.mp3');
     this.load.audio('gameover', 'gameover.mp3');
     // --- 1. FONDO ---

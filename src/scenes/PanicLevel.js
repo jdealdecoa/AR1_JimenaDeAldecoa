@@ -124,7 +124,7 @@ export class PanicLevel extends Phaser.Scene {
 
     // --- CARGA DE AUDIO ---
     this.load.setPath('assets/audio');
-    this.load.audio('bandaSonora', 'bandaSonora.mp3');
+    this.load.audio('inicio', 'inicio.mp3');
     this.load.audio('disparo', 'disparo.mp3');
     this.load.audio('burbuja_pop', 'burbuja_pop.mp3');
     this.load.audio('gameover', 'gameover.mp3');
@@ -133,7 +133,7 @@ export class PanicLevel extends Phaser.Scene {
   create() {
     if (this.game.audioManager) {
       this.game.audioManager.stopMusic();
-      this.game.audioManager.playMusic(this, 'bandaSonora', { loop: true, volume: 0.5 });
+      this.game.audioManager.playMusic(this, 'inicio', { loop: true, volume: 0.5 });
     }
     // --- MAPA ---
     const map = this.make.tilemap({ key: 'map_marco' });
@@ -200,6 +200,11 @@ export class PanicLevel extends Phaser.Scene {
       this.hud.exp = 0; // La barra empieza vacía en el nuevo nivel
       this.hud.setExp(0);
       console.log(`PANIC MODE - Reiniciando en Nivel ${this.panicLevel}`);
+    } else {
+      // Nivel 1: resetear experiencia completamente
+      this.hud.exp = 0;
+      this.hud.expLevel = 1;
+      this.hud.setExp(0);
     }
     
     // Actualizar las vidas en el HUD (importante si viene de un reinicio)

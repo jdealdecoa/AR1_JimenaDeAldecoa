@@ -51,7 +51,7 @@ export class Level2 extends Phaser.Scene {
     this.load.audio("burbuja_pop", "burbuja_pop.mp3");
     this.load.audio("rectangulo_pop", "rectangulo_pop.mp3");
     this.load.audio("disparo", "disparo.mp3");
-    this.load.audio("bandaSonora", "bandaSonora.mp3");
+    this.load.audio("inicio", "inicio.mp3");
     this.load.audio("victoria", "victoria.mp3");
     this.load.audio("gameover", "gameover.mp3");
 
@@ -346,7 +346,7 @@ export class Level2 extends Phaser.Scene {
     });
 
     // Música
-    this.game.audioManager?.playMusic?.(this, "bandaSonora", { loop: true, volume: 0.5 });
+    this.game.audioManager?.playMusic?.(this, "inicio", { loop: true, volume: 0.5 });
 
     // Show ready screen at level start
     this.readyScreen.show(1500);
