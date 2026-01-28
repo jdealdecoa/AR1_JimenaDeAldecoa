@@ -1045,6 +1045,17 @@ export class Level1 extends Phaser.Scene {
     }
   }
 
+  checkLevelCompletion() {
+    if (this.ballsGroup && this.ballsGroup.getChildren().length === 0 && !this._levelCompleted) {
+      this._levelCompleted = true;
+      console.log('Nivel 1 completado, pasando a Nivel 2');
+      this.game.audioManager.playEffect(this, 'victoria', { volume: 1 });
+      this.time.delayedCall(2000, () => {
+        this.game.audioManager.stopMusic();
+        this.scene.start('Level2');
+      });
+    }
+  }
 
   onFixedHarpoonHitsBall(fixedHarpoon, ball) {
     if (fixedHarpoon && fixedHarpoon.active && ball && ball.active) {

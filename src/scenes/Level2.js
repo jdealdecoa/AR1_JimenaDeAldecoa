@@ -656,6 +656,18 @@ export class Level2 extends Phaser.Scene {
       if (ball.takeDamage) ball.takeDamage();
     }
   }
+
+  checkLevelCompletion() {
+    if (this.ballsGroup && this.ballsGroup.getChildren().length === 0 && !this._levelCompleted) {
+      this._levelCompleted = true;
+      console.log('Nivel 2 completado, pasando a Nivel 3');
+      this.game.audioManager.playEffect(this, 'victoria', { volume: 1 });
+      this.time.delayedCall(2000, () => {
+        this.game.audioManager.stopMusic();
+        this.scene.start('Level3');
+      });
+    }
+  }
 }
 
 export default Level2;

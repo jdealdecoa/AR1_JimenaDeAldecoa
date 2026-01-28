@@ -232,6 +232,7 @@ export class Hud {
     this.events.on(EVENTS.game.SCORE_CHANGE, this.onScoreChange, this);
     this.events.on(EVENTS.hero.READY, this.onHeroReady, this);
     this.events.on(EVENTS.hero.DAMAGED, this.onHeroDamaged, this);
+    this.events.on(EVENTS.hero.LIFE_GAINED, this.onLifeGained, this);
     this.events.on('UI_WEAPON_CHANGE', this.onWeaponChange, this);
 
 
@@ -271,20 +272,48 @@ export class Hud {
     this.setLives(remainingLives);
   }
 
+  onLifeGained(totalLives) {
+    try {
+      this.setLives(totalLives);
+    } catch (error) {
+      console.error('[HUD] Error in onLifeGained:', error);
+    }
+  }
+
   setLives(value) {
-    this.lives = value;
-    const actualValue = value ?? 0;
-    const visibleIcons = Math.min(3, actualValue);
-    this.lifeIcons.forEach((icon, index) => {
-      icon.setVisible(index < visibleIcons);
-    });
-    // Vidas extra (solo si hay más de 3)
-    const extraLives = Math.max(0, actualValue - 3);
-    if (extraLives > 0) {
-      this.extraLivesText.setText(`X${extraLives}`);
-      this.extraLivesText.setVisible(true);
-    } else {
-      this.extraLivesText.setVisible(false);
+    try {
+      this.lives = value;
+      const actualValue = value ?? 0;
+      const visibleIcons = Math.min(3, actualValue);
+      
+      // Protection: check if lifeIcons array exists
+      if (!this.lifeIcons || !Array.isArray(this.lifeIcons)) {
+        console.warn('[HUD] lifeIcons not initialized');
+        return;
+      }
+      
+      this.lifeIcons.forEach((icon, index) => {
+        if (icon && icon.setVisible && icon.scene) {
+          icon.setVisible(index < visibleIcons);
+        }
+      });
+      
+      // Vidas extra (solo si hay más de 3)
+      const extraLives = Math.max(0, actualValue - 3);
+      if (this.extraLivesText && this.extraLivesText.scene && typeof this.extraLivesText.setText === 'function') {
+        try {
+          if (extraLives > 0) {
+            this.extraLivesText.setText(`X${extraLives}`);
+            this.extraLivesText.setVisible(true);
+          } else {
+            this.extraLivesText.setVisible(false);
+          }
+        } catch (textError) {
+          console.error('[HUD] Error updating extraLivesText:', textError);
+        }
+      }
+    } catch (error) {
+      console.error('[HUD] Error in setLives:', error);
     }
   }
 

@@ -1050,15 +1050,23 @@ export class Level10 extends Phaser.Scene {
         this.ballsGroup.remove(ball, true, true);
         console.log(`[BALL REMOVED FROM GROUP] Remaining: ${this.ballsGroup.getChildren().length}`);
         // Check group length for level completion
-        if (this.ballsGroup.getChildren().length === 0 && !this._levelCompleted) {
-          this._levelCompleted = true;
-          console.log('Nivel 10 completado');
-          this.scene.start('MainMenuScene');
-        }
+        this.checkLevelCompletion();
       }
       // Play ball pop sound
       if (this.sound) this.sound.play('burbuja_pop', { volume: 0.7 });
       if (ball.takeDamage) ball.takeDamage();
+    }
+  }
+
+  checkLevelCompletion() {
+    if (this.ballsGroup && this.ballsGroup.getChildren().length === 0 && !this._levelCompleted) {
+      this._levelCompleted = true;
+      console.log('Nivel 10 completado, pasando a MainMenuScene');
+      this.game.audioManager.playEffect(this, 'victoria', { volume: 1 });
+      this.time.delayedCall(2000, () => {
+        this.game.audioManager.stopMusic();
+        this.scene.start('MainMenuScene');
+      });
     }
   }
 
