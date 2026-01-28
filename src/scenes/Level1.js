@@ -115,6 +115,9 @@ export class Level1 extends Phaser.Scene {
       frameHeight: 20
     });
 
+    // --- 8B. FRUITS IMAGE ---
+    this.load.image("fruit", "fruit.png");
+
     // --- 9. BIRDS ---
     this.load.setPath("assets/sprites/spritesheets/enemies");
     this.load.spritesheet("bird_small", "bird_small.png", {

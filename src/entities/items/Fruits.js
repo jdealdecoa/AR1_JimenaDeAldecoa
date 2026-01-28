@@ -32,7 +32,7 @@ export class Fruits extends BaseItem {
       name = 'Apple';
     }
     
-    super(scene, x, y, 'bonus', {
+    super(scene, x, y, 'fruit', {
       itemType: 'FRUITS',
       ttl: 8000, // 8 seconds before despawn
       gravity: 500,
@@ -42,7 +42,31 @@ export class Fruits extends BaseItem {
     this.points = points;
     this.fruitName = name;
     
-    // Asigna el frame correcto cuando se añadan sprites
+    // Override base scale to be smaller and match power-ups
+    this.setScale(0.1);
+    
+    // Remove the pulse animation from BaseItem
+    this.scene.tweens.killTweensOf(this);
+  }
+
+  /**
+   * Override to prevent pulse animation
+   */
+  createVisualEffects() {
+    // No visual effects for fruits - keep them static size
+  }
+
+  /**
+   * Override pickup effect to keep small size
+   */
+  playPickupEffect() {
+    // Just fade out without scaling
+    this.scene.tweens.add({
+      targets: this,
+      alpha: 0,
+      duration: 150,
+      ease: 'Back.easeIn'
+    });
   }
 
   /**

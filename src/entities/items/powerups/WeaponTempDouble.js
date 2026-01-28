@@ -73,8 +73,6 @@ export class WeaponTempDouble extends BaseItem {
     hero._tempWeaponTimer = scene.time.delayedCall(ITEMS.DURATION.WEAPON_TEMP, () => {
       this.revertWeapon(hero, scene);
     });
-    
-    console.log('Temporary double harpoon activated for', ITEMS.DURATION.WEAPON_TEMP / 1000, 'seconds');
   }
 
   /**
